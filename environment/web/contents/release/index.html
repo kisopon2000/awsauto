@@ -1,0 +1,1344 @@
+<!-- M-Cock Evaluation sample -->
+<!-- You deploy this file to '*/web/contents' and access 'http://localhost' by browser  -->
+
+<!DOCTYPE html>
+<html>
+<head>
+	<meta name="Fbrscui01" content="M-Cock sample" charset="utf-8">
+	<meta name="author" content="FUJIFILM BUISINESS INNOVATION">
+	<meta name="description" content="M-Cock">
+	<meta name="keywords" content="M-Cock">
+	
+	<!--Import Google Icon Font-->
+	<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+	<!-- Compiled and minified CSS -->
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+	<!--Let browser know website is optimized for mobile-->
+	<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+	
+	<style type="text/css">
+		/*h1 { color: red; margin: 0 100px; }
+		h3 { text-align: center; }
+		p { color: blue; }
+		div { margin: 0 50px; }*/
+		.se-div { margin-left: 50px; }
+		#modal-close { display: block; margin: 0 0 0 auto; }
+		
+		.nav {
+			background-color: #ffffff !important;
+			font-size: 14px;
+			font-weight: bold;
+		}
+		.validate {
+			color: white;
+		}
+		.se-input-login {
+			color: black;
+		}
+		.se-card {
+			height: 260px;
+		}
+		
+		.preloader-wrapper {
+			display: block;
+			margin-top: 20px;
+			margin-left: auto;
+			margin-right: auto;
+			text-align: center
+		}
+	</style>
+	
+	<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-cookie/1.4.1/jquery.cookie.min.js"></script>
+	<script>
+	var g_token = '038efcecfc94fcd6fce3fce2fce6fcd8fce6fcf2fcd9fce4fce0fc9ffcb8fca1fcc6fcf6fcecfcecfca4fcddfcebfcf9fcf7fd01fcacfcb7fcaefd02fd01fcf4fd02fcf0fcfbfcf7fcb6fccffcc7fd14fca2';
+	function syncpost(type, act, param, content){
+		var xhr = new XMLHttpRequest();
+		xhr.open(type, act, false);
+		xhr.setRequestHeader("Content-Type", content);
+		xhr.setRequestHeader("X-PWSP-AUTH", g_token);
+		xhr.send(param);
+		if(xhr.status === 200){
+			//alert(xhr.responseText);
+			return JSON.parse(xhr.responseText); 
+		}else{
+			alert(xhr.status);
+			return null
+		}
+	}
+	function syncpostForDownload(type, act, param, content){
+		var xhr = new XMLHttpRequest();
+		xhr.open(type, act, true);
+		xhr.responseType = "blob"; 
+		xhr.setRequestHeader("Content-Type", content);
+		xhr.setRequestHeader("X-PWSP-AUTH", g_token);
+		xhr.onload = function (e){
+			if(xhr.status === 200){
+				var blob = xhr.response;
+				var disposition = xhr.getResponseHeader("Content-Disposition");
+				var matches = disposition.match(/filename="(.+)"$/);
+				var filename = matches[1];
+				if (window.navigator.msSaveBlob) {
+				    window.navigator.msSaveBlob(blob, filename);
+				}else{
+				    var objectURL = window.URL.createObjectURL(blob);
+				    var link = document.createElement("a");
+				    document.body.appendChild(link);
+				    link.href = objectURL;
+				    link.download = filename;
+				    link.click();
+				    document.body.removeChild(link);
+				}		
+			}else{
+				alert(xhr.status);
+			}
+		}
+		xhr.send(param);
+	}
+	function sleep(in_msec){
+		var startMsec = new Date();
+		while (new Date() - startMsec < in_msec);
+	}
+	function getProgress(in_max, in_value){
+		var value = Math.round((in_value / in_max) * 100);
+		//value = String(value);
+		//value = value + '%';
+		return value;
+	}
+	function updateModal(in_element_title, in_element_progress, in_title, in_progress){
+		$(in_element_title).text(in_title);
+		$(in_element_progress).css('width', in_progress);
+	}
+	function updateModalTitle(in_element_title, in_title){
+		$(in_element_title).text(in_title);
+	}
+	function updateModalProgress(in_element_progress, in_progress){
+		$(in_element_progress).css('width', in_progress + '%');
+	}
+	function refreshModalProgress(in_element_progress){
+		$(in_element_progress).css('width', '0%');
+	}
+	function setModalErrorMessage(in_element_progress){
+		$(in_element_progress).text('内部エラーが発生しました。管理者の磯部(fx29364)までお問い合わせ下さい。');
+	}
+	function resetModalErrorMessage(in_element_progress){
+		$(in_element_progress).text('');
+	}
+	function addEnvironmentS3Upload(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/s3',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 's3_upload'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'S3 (upload) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'S3 (upload) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentS3Upload(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("s3_upload");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/s3' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'S3 (upload) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'S3 (upload) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentS3Datalake(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/s3',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 's3_datalake'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'S3 (datalake) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'S3 (datalake) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentS3Datalake(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("s3_datalake");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/s3' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'S3 (datalake) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'S3 (datalake) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentS3Notification(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/s3',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 's3_notification'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'S3 (notification) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'S3 (notification) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentS3Notification(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("s3_notification");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/s3' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'S3 (notification) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'S3 (notification) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentLambdaUpload(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/lambda',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'lambda_upload'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Lambda (upload) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Lambda (upload) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentLambdaUpload(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("lambda_upload");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/lambda' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (upload) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (upload) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentLambdaMachineLearning(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/lambda',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'lambda_machine_learning'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Lambda (machine-learning) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Lambda (machine-learning) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentLambdaMachineLearning(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("lambda_machine_learning");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/lambda' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (machine-learning) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (machine-learning) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentLambdaPermission(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/lambda',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'lambda_permission'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Lambda (permission) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Lambda (permission) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentLambdaPermission(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("lambda_permission");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/lambda' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (permission) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Lambda (permission) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentGlueMachineLearning(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/glue',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'glue_machine_learning'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Glue (machine-learning) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Glue (machine-learning) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentGlueMachineLearning(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("glue_machine_learning");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/glue' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Glue (machine-learning) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Glue (machine-learning) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentGlueDB(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/glue',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'glue_db'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Glue (db) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Glue (db) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentGlueDB(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("glue_db");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/glue' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Glue (db) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Glue (db) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentGlueCrawler(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/glue',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'glue_crawler'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Glue (crawler) making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Glue (crawler) created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentGlueCrawler(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("glue_crawler");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/glue' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Glue (crawler) deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Glue (crawler) delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function addEnvironmentAthena(inout_list, in_max, in_value){
+		inout_list.push({
+			type: 'post',
+			//url: 'api/heartbeat',
+			url: 'api/environment/athena',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				type: 'athena_1'
+			}),
+			contentType: 'application/json',
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment', 'Athena making ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment', 'Athena created successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment');
+			}
+		});
+	}
+	function deleteEnvironmentAthena(inout_list, in_max, in_value){
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		param += '&';
+		param += encodeURIComponent("type") + "=" + encodeURIComponent("athena_1");
+		inout_list.push({
+			type: 'delete',
+			url: 'api/environment/athena' + param,
+			beforeSend: function(xhr, setting) {
+				updateModalTitle('#modal-header-environment-delete', 'Athena deleting ...');
+			},
+			success: function(data){
+				updateModalTitle('#modal-header-environment-delete', 'Athena delete successfully');
+				console.log(data);
+			},
+			error: function(data){
+				setModalErrorMessage('#se-modal-message-environment-delete');
+			}
+		});
+	}
+	function deleteEnvironmentList(){
+		var act='api/environment/list';
+		var param = "";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		act += "?" + param;
+		ret = syncpost("DELETE", act, param, "application/x-www-form-urlencoded");
+		if(ret){
+			if(ret['result'] == 0){
+				return 0;
+			}else{
+				console.log(`<!> Cannot delete environment list file, ${ret}.`)
+			}
+		}else{
+			console.log(`<!> api/environment/list failed, ${ret}.`)
+		}
+		return 1;
+	}
+	function setupEnvironmentModal(in_environmentTypes){
+		function execModalQueue(in_creationList, in_allCompleteHandler){
+			var modal_max_count = in_environmentTypes.length;
+			var index = 1;
+			var defaults = {
+				complete: function(){
+					// エラーチェック
+					var error = $('#se-modal-message-environment').text();
+					console.log(error);
+					if(error){
+						console.log('<!> environment creation error occured !');
+						$('#se-modal-close-environment').show();
+					}else{
+						in_creationList.shift();
+						updateModalProgress('#se-modal-progress-environment', getProgress(modal_max_count, index));
+						//sleep(10000);
+						index += 1;
+						if(in_creationList.length == 0){
+							updateModalTitle('#modal-header-environment', '環境構築が終了しました。');
+							$('#se-modal-close-environment').show();
+							if(in_allCompleteHandler){
+								in_allCompleteHandler();
+							}
+						}else{
+							creation = in_creationList[0];
+							creationList = $.extend({}, defaults, creation);
+							$.ajax(creationList);
+						};
+					}
+				}
+			};
+			var creation = in_creationList[0];
+			var creationList = $.extend({}, defaults, creation);
+			$.ajax(creationList);
+		};
+
+		var modal_max_count = in_environmentTypes.length;
+		var creationList = [];
+		for (let i = 0; i < modal_max_count; i++) {
+			var index = i + 1;
+			var type = in_environmentTypes[i];
+			switch(type){
+			case 's3_upload':
+				addEnvironmentS3Upload(creationList, modal_max_count, index);
+				break;
+			case 's3_datalake':
+				addEnvironmentS3Datalake(creationList, modal_max_count, index);
+				break;
+			case 's3_notification':
+				addEnvironmentS3Notification(creationList, modal_max_count, index);
+				break;
+			case 'lambda_upload':
+				addEnvironmentLambdaUpload(creationList, modal_max_count, index);
+				break;
+			case 'lambda_machine_learning':
+				addEnvironmentLambdaMachineLearning(creationList, modal_max_count, index);
+				break;
+			case 'lambda_permission':
+				addEnvironmentLambdaPermission(creationList, modal_max_count, index);
+				break;
+			case 'glue_machine_learning':
+				addEnvironmentGlueMachineLearning(creationList, modal_max_count, index);
+				break;
+			case 'glue_db':
+				addEnvironmentGlueDB(creationList, modal_max_count, index);
+				break;
+			case 'glue_crawler':
+				addEnvironmentGlueCrawler(creationList, modal_max_count, index);
+				break;
+			default:
+				console.log(`<!> Not support environment type ${type}.`);
+			}
+		}
+		refreshModalProgress('#se-modal-progress-environment');
+		resetModalErrorMessage('#se-modal-message-environment');
+		execModalQueue(creationList);
+	}
+	function setupEnvironmentDeleteModal(in_environmentTypes){
+		function execEnvironmentDeleteModalQueue(in_deleteList, in_allCompleteHandler){
+			var modal_max_count = in_environmentTypes.length;
+			var index = 1;
+			var defaults = {
+				complete: function(){
+					// エラーチェック
+					var error = $('#se-modal-message-environment-delete').text();
+					console.log(error);
+					if(error){
+						console.log('<!> environment delete error occured !');
+						$('#se-modal-close-environment-delete').show();
+					}else{
+						in_deleteList.shift();
+						updateModalProgress('#se-modal-progress-environment-delete', getProgress(modal_max_count, index));
+						index += 1;
+						if(in_deleteList.length == 0){
+							deleteEnvironmentList();
+							updateModalTitle('#modal-header-environment-delete', '環境削除が終了しました。');
+							$('#se-modal-close-environment-delete').show();
+							if(in_allCompleteHandler){
+								in_allCompleteHandler();
+							}
+						}else{
+							deleteItem = in_deleteList[0];
+							deleteList = $.extend({}, defaults, deleteItem);
+							$.ajax(deleteList);
+						};
+					}
+				}
+			};
+			var deleteItem = in_deleteList[0];
+			var deleteList = $.extend({}, defaults, deleteItem);
+			$.ajax(deleteList);
+		};
+
+		var modal_max_count = in_environmentTypes.length;
+		var deleteList = [];
+		for (let i = 0; i < modal_max_count; i++) {
+			var index = i + 1;
+			var type = in_environmentTypes[i];
+			switch(type){
+			case 's3_upload':
+				deleteEnvironmentS3Upload(deleteList, modal_max_count, index);
+				break;
+			case 's3_datalake':
+				deleteEnvironmentS3Datalake(deleteList, modal_max_count, index);
+				break;
+			case 's3_notification':
+				deleteEnvironmentS3Notification(creationList, modal_max_count, index);
+				break;
+			case 'lambda_upload':
+				deleteEnvironmentLambdaUpload(deleteList, modal_max_count, index);
+				break;
+			case 'lambda_machine_learning':
+				deleteEnvironmentLambdaMachineLearning(deleteList, modal_max_count, index);
+				break;
+			case 'lambda_permission':
+				deleteEnvironmentLambdaPermission(creationList, modal_max_count, index);
+				break;
+			case 'glue_machine_learning':
+				deleteEnvironmentGlueMachineLearning(deleteList, modal_max_count, index);
+				break;
+			case 'glue_db':
+				deleteEnvironmentGlueDB(deleteList, modal_max_count, index);
+				break;
+			case 'glue_crawler':
+				deleteEnvironmentGlueCrawler(deleteList, modal_max_count, index);
+				break;
+			default:
+				console.log(`<!> Not support environment type ${type}.`);
+			}
+		}
+		refreshModalProgress('#se-modal-progress-environment-delete');
+		resetModalErrorMessage('#se-modal-message-environment-delete');
+		execEnvironmentDeleteModalQueue(deleteList);
+	}
+	function heartbeat(){
+		var act='api/heartbeat';
+		var param = {};
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	function postLogin(){
+		employee_number = $("#login_employee_number").val();
+		password = $("#login_password").val();
+		if(!employee_number || !employee_number.match(/\S/g)){
+			alert("社員番号を入力して下さい")
+			return false;
+		}
+		if(!employee_number.match(/^fx[0-9]+/)){
+			alert("社員番号はfx〇〇〇〇〇の形式で入力して下さい")
+		    return false;
+		}
+		if(!password || !password.match(/\S/g)){
+			alert("パスワードを入力して下さい")
+			return false;
+		}
+		$('#se-login-result').text('認証中です。');
+		$("#se-login-result").css("color","black");
+		$.ajax({
+			type: 'post',
+			url: 'api/auth',
+			data: JSON.stringify({
+				"employee_number": employee_number,
+				"password": password
+			}),
+			contentType: 'application/json',
+			success: function(data){
+				var data = JSON.parse(data);
+				if(data['result'] == 0){
+					$('#se-login-result').text('認証に成功しました。');
+					// cookieに設定
+					date = new Date();
+					//date.setTime(date.getTime() + (10 * 60 * 1000));	// Cookieの有効期限は10分
+					//$.cookie("se-mcock-account", employee_number, {expires: date});
+					$.cookie("se-mcock-account", employee_number);	// Cookieの有効期限は設けない
+					$('#modalview-login').modal("close");	// 成功したら認証モーダルをCLOSE
+				}else{
+					$('#se-login-result').text('認証に失敗しました。');
+					$("#se-login-result").css("color","red");
+				}
+			},
+			error: function(data){
+				$('#se-login-result').text('認証に失敗しました。');
+				$("#se-login-result").css("color","red");
+			}
+		});
+		return false;
+	}
+	function getEnvironmentList(){
+		$('table#se-modal-content-environment-table').remove();
+		$("#modalview-environment-list").modal("open");
+		$.ajax({
+			type: 'get',
+			url: 'api/environment/list',
+			data: {
+				employee_number: $.cookie("se-mcock-account")
+			},
+			success: function(data){
+				var data = JSON.parse(data);
+				var environments = data['environments'];
+				var table = $('<table id="se-modal-content-environment-table" style="border: 1px solid #bbb; table-layout: fixed;">');
+				var thead = $('<thead></thead>').appendTo(table);
+				var tr = $('<tr></tr>').appendTo(thead);
+				$('<th>ID</th>').appendTo(tr);
+				$('<th>Customer</th>').appendTo(tr);
+				$('<th>Memo</th>').appendTo(tr);
+				for(var i = 0; i < environments.length; i++){
+					var environment = environments[i];
+					var id = environment['id'];
+					var customer = environment['customer'];
+					var memo = environment['memo'];
+					var tbody = $('<tbody></tbody>').appendTo(table);
+					var tr = $('<tr></tr>').appendTo(tbody);
+					$('<td>' + id + '</td>').appendTo(tr);
+					$('<td>' + customer + '</td>').appendTo(tr);
+					$('<td>' + memo + '</td>').appendTo(tr);
+				}
+				$('#se-modal-content-environment-list').append(table);
+			},
+		});
+	}
+	function postEnvironment(){
+		var act='api/environment';
+		var param = {};
+		param.employee_number = $.cookie("se-mcock-account");
+		param.id = $('#id').val();
+		param.customer = $('#customer').val();
+		param.memo = $('#memo').val();
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(param.id.length < 2){
+			alert("IDは2文字以上を入力して下さい")
+		    return false;
+		}
+		if(param.id.match(/^[^\x01-\x7E\xA1-\xDF]+$/)){
+			alert("IDは半角英数字を入力して下さい")
+		    return false;
+		}
+		if(!param.customer || !param.customer.match(/\S/g)){
+			alert("Customerを入力して下さい")
+			return false;
+		}
+		if(param.customer.length < 2){
+			alert("Customerは2文字以上を入力して下さい")
+		    return false;
+		}
+		$('#se-preloader-environment').show();
+		$('#se-modal-environment').hide();
+		$("#modalview-environment").modal("open");
+		$('#se-modal-close-environment').hide();
+		$.ajax({
+			type: 'post',
+			url: 'api/environment',
+			data: JSON.stringify({
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#id').val(),
+				customer: $('#customer').val(),
+				memo: $('#memo').val()
+			}),
+			contentType: 'application/json',
+			success: function(data){
+				$('#se-preloader-environment').hide();
+				$('#se-modal-environment').show();
+				var data = JSON.parse(data);
+				var environmentTypes = data['environment_types'];
+				setupEnvironmentModal(environmentTypes);
+			},
+		});
+		return false;
+	}
+	function putEnvironment(){
+		var act='api/environment';
+		var param = {};
+		param.employee_number = $.cookie("se-mcock-account");
+		param.id = $('#id').val();
+		param.customer = $('#customer').val();
+		param.memo = $('#memo').val();
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(param.id.length < 2){
+			alert("IDは2文字以上を入力して下さい")
+		    return false;
+		}
+		if(param.id.match(/^[^\x01-\x7E\xA1-\xDF]+$/)){
+			alert("IDは半角英数字を入力して下さい")
+		    return false;
+		}
+		if(!param.customer || !param.customer.match(/\S/g)){
+			alert("Customerを入力して下さい")
+			return false;
+		}
+		if(param.customer.length < 2){
+			alert("Customerは2文字以上を入力して下さい")
+		    return false;
+		}
+		ret = syncpost("PUT", act, JSON.stringify(param), "application/json");
+		if(ret){
+			if(ret['result'] == 0){
+				alert("成功しました。");
+			}else if(ret['result'] == 10){
+				alert("指定されたIDは存在していません。");
+			}else{
+				alert("失敗しました。");
+			}
+		}
+		return false;
+	}
+	function getEnvironment(){
+		var act='api/environment';
+		var param = {};
+		param.employee_number = $.cookie("se-mcock-account");
+		param.id = $('#confirmation-id').val();
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(param.id.length < 2){
+			alert("IDは2文字以上を入力して下さい")
+		    return false;
+		}
+		if(param.id.match(/^[^\x01-\x7E\xA1-\xDF]+$/)){
+			alert("IDは半角英数字を入力して下さい")
+		    return false;
+		}
+		$('#modal-header-environment-confirmation').css('color', 'black');
+		$('#se-preloader-environment-confirmation').show();
+		$('#se-modal-environment-confirmation').hide();
+		$("#modalview-environment-confirmation").modal("open");
+		$('#se-modal-close-environment-confirmation').hide();
+		$.ajax({
+			type: 'get',
+			url: 'api/environment',
+			data: {
+				employee_number: $.cookie("se-mcock-account"),
+				id: $('#confirmation-id').val()
+			},
+			success: function(data){
+				$('#se-preloader-environment-confirmation').hide();
+				$('#se-modal-environment-confirmation').show();
+				var data = JSON.parse(data);
+				if(data['result'] == 10){
+					updateModalTitle('#modal-header-environment-confirmation', '指定されたIDは存在していません。');
+					$('#modal-header-environment-confirmation').css('color', 'red');
+					$('#se-modal-close-environment-confirmation').show();
+				}else{
+					var environmentTypes = data['environment_types'];
+					$('#se-modal-close-environment-confirmation').show();
+					if(environmentTypes.length == 0){
+						updateModalTitle('#modal-header-environment-confirmation', 'クラウド環境は正常に構築されています。');
+					}else{
+						updateModalTitle('#modal-header-environment-confirmation', 'クラウド環境に不備があります。Creationの実行ボタンを押下し、環境を再構築して下さい。');
+						$('#modal-header-environment-confirmation').css('color', 'red');
+					}
+				}
+			},
+		});
+		return false;
+	}
+	function deleteEnvironment(){
+		var act='api/environment';
+		var param = {};
+		param.employee_number = $.cookie("se-mcock-account");
+		param.id = $('#delete-id').val();
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(param.id.length < 2){
+			alert("IDは2文字以上を入力して下さい")
+		    return false;
+		}
+		if(param.id.match(/^[^\x01-\x7E\xA1-\xDF]+$/)){
+			alert("IDは半角英数字を入力して下さい")
+		    return false;
+		}
+		var param = "?";
+		param += encodeURIComponent("employee_number") + "=" + encodeURIComponent($.cookie("se-mcock-account"));
+		param += '&';
+		param += encodeURIComponent("id") + "=" + encodeURIComponent($('#delete-id').val());
+		$('#modal-header-environment-delete').css('color', 'black');
+		$('#se-preloader-environment-delete').show();
+		$('#se-modal-environment-delete').hide();
+		$("#modalview-environment-delete").modal("open");
+		$('#se-modal-close-environment-delete').hide();
+		$.ajax({
+			type: 'delete',
+			url: 'api/environment' + param,
+			success: function(data){
+				$('#se-preloader-environment-delete').hide();
+				$('#se-modal-environment-delete').show();
+				var data = JSON.parse(data);
+				if(data['result'] == 10){
+					updateModalTitle('#modal-header-environment-delete', '指定されたIDは存在していません。');
+					$('#modal-header-environment-delete').css('color', 'red');
+					$('#se-modal-close-environment-delete').show();
+				}else{
+					var environmentTypes = data['environment_types'];
+					setupEnvironmentDeleteModal(environmentTypes);
+				}
+			},
+		});
+		return false;
+	}
+	function getFortune(){
+		$("#modalview-fortune").modal("open");
+		$.ajax({
+			type: 'get',
+			url: 'api/fortune',
+			data: {
+				employee_number: $.cookie("se-mcock-account")
+			},
+			success: function(data){
+				$('#se-preloader').hide();
+				$('#se-modal').show();
+				var data = JSON.parse(data);
+				console.log(data['context']);
+				$('#se-modal-fortune').attr('src', data['resource']);
+				$('#se-modal-fortune-context').html(data['context']);
+			},
+		});
+	}
+	$(function(){		
+		// モーダル初期化のおまじない
+		$('.modal').modal();
+
+		// [modal(environment)] イベント登録
+		$("#modalview-environment").modal({
+			onCloseEnd: function() { // Callback for Modal close
+				$('#se-preloader-environment').show();
+				$('#se-modal-environment').hide();
+			} 
+		});
+
+		// [modal(environment-delete)] イベント登録
+		$("#modalview-environment-delete").modal({
+			onCloseEnd: function() { // Callback for Modal close
+				$('#se-preloader-environment-delete').show();
+				$('#se-modal-environment-delete').hide();
+			} 
+		});
+
+		// [modal(fortune)] イベント登録
+		$("#modalview-fortune").modal({
+			onCloseEnd: function() { // Callback for Modal close
+				$('#se-preloader').show();
+				$('#se-modal').hide();
+			} 
+		});
+
+		// ドロップダウンのイベント登録
+		$(".dropdown-trigger").dropdown();
+
+		// [modal(environment)] モーダル設定
+		$('#modalview-environment').modal({
+			backdrop: 'static',
+			keyboard: false,
+			dismissible: false
+		});
+
+		// [modal(environment-delete)] モーダル設定
+		$('#modalview-environment-delete').modal({
+			backdrop: 'static',
+			keyboard: false,
+			dismissible: false
+		});
+
+		// 認証確認
+		//$.removeCookie("se-mcock-account");
+		if($.cookie("se-mcock-account")){
+			// 認証済み
+		}else{
+			// 認証モーダルをOPEN
+			$('#modalview-login').modal({
+				backdrop: 'static',
+				keyboard: false,
+				dismissible: false
+			});
+			$('#modalview-login').modal("open");
+		}
+	})
+	</script>
+</head>
+<body>
+	<!-- Compiled and minified JavaScript -->
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+
+	<ul id="dropdown" class="dropdown-content">
+		<li><a href="#!" style="color: black;" onclick="getFortune()">Fortune</a></li>
+		<li><a href="#!" style="color: black;">TBD</a></li>
+	</ul>
+	<nav class="black">
+		<div class="nav-wrapper">
+			<a href="#" class="brand-logo se-div"><i class="material-icons">cloud</i>Cloud Auto Creator</a>
+			<ul class="right hide-on-med-and-down">
+				<li><a class="dropdown-trigger" href="#!" data-target="dropdown">Entertainment<i class="material-icons right">arrow_drop_down</i></a></li>
+			</ul>
+		</div>
+	</nav>
+	<div>
+		<h4 class="se-div">Marketing Cockpit</h3>
+		<hr>
+		<p class="se-div">Marketing Cockpitのクラウド環境を構築します。</p>
+	</div>
+	<div>
+		<div class="row">
+			<div class="col s12 m6">
+				<div class="card horizontal blue-grey grey darken-2 se-card">
+					<div class="card-content white-text">
+						<span class="card-title">Your Environment</span>
+						<p>display cloud environment list you created previously.</p><br/>
+						<button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" onclick="getEnvironmentList()">実行<i class="material-icons right">send</i></button>
+					</div>
+				</div>
+			</div>
+			<div class="col s12 m6">
+				<div class="card horizontal blue-grey grey darken-2 se-card">
+					<div class="card-content white-text">
+						<span class="card-title">Creation</span>
+						<p>create marketing cockpit cloud environment.<br/>
+						input unique id for your customer and your employee number.</p>
+						<div style="display:inline-flex">
+							<div class="input-field col s12">
+								<input id="id" type="text" class="validate">
+								<label for="id">ID</label>
+							</div>
+							<div class="input-field col s12">
+								<input id="customer" type="text" class="validate">
+								<label for="customer">Customer</label>
+							</div>
+							<div class="input-field col s12">
+								<input id="memo" type="text" class="validate">
+								<label for="memo">Memo</label>
+							</div>
+						</div>
+						<br/><button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" onclick="postEnvironment()">実行<i class="material-icons right">send</i></button>
+						<button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" style="margin-left: 20px;" onclick="putEnvironment()">更新<i class="material-icons right">send</i></button>
+					</div>
+				</div>
+			</div>
+			<div class="col s12 m6">
+				<div class="card horizontal blue-grey grey darken-2 se-card">
+					<div class="card-content white-text">
+						<span class="card-title">Confirmation</span>
+						<p>confirm if cloud environment was created correctly.<br/>
+						input unique id.</p>
+						<div class="input-field col s12">
+							<input id="confirmation-id" type="text" class="validate">
+							<label for="confirmation-id">ID</label>
+						</div>
+						<button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" onclick="getEnvironment()">実行<i class="material-icons right">send</i></button>
+					</div>
+				</div>
+			</div>
+			<div class="col s12 m6">
+				<div class="card horizontal blue-grey grey darken-2 se-card">
+					<div class="card-content white-text">
+						<span class="card-title">Delete</span>
+						<p>delete cloud environment you created previously.<br/>
+						input unique id.</p>
+						<div class="input-field col s12">
+							<input id="delete-id" type="text" class="validate">
+							<label for="delete-id">ID</label>
+						</div>
+						<button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" onclick="deleteEnvironment()">実行<i class="material-icons right">send</i></button>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<button data-target="modalview-environment-list" class="btn modal-trigger">モーダル表示</button>
+	<div id="modalview-environment-list" class="modal">  <!-- idの値をボタンで設定したdata-targetの値と一致させる -->
+		<div id="se-modal-content-environment-list" class="modal-content">
+			<h4>Your Environment</h4>
+			<p>あなたが構築したクラウド環境の一覧です。</p>
+		</div>
+		<div class="modal-footer">
+			<a href="#!" class="modal-close waves-effect waves-green btn-flat">閉じる</a>
+		</div>
+	</div>
+	<div id="modalview-environment" class="modal">  <!-- idの値をボタンで設定したdata-targetの値と一致させる -->
+		<div id="se-preloader-environment">
+			<div class="preloader-wrapper big active">
+				<div class="spinner-layer spinner-blue-only">
+					<div class="circle-clipper left">
+						<div class="circle"></div>
+					</div>
+					<div class="gap-patch">
+						<div class="circle"></div>
+					</div>
+					<div class="circle-clipper right">
+						<div class="circle"></div>
+					</div>
+				</div>
+			</div>
+			<p style="text-align: center">Wait a minute ...</p>
+		</div>
+		<div hidden id="se-modal-environment">
+			<div id="se-modal-content-environment" class="modal-content">
+				<h4>Creation Progress</h4>
+				<p id="modal-header-environment">クラウド環境構築の進捗です。</p><br/>
+				<div class="progress">
+					<div id="se-modal-progress-environment" class="determinate" style="width: 0%"></div>
+				</div>
+				<div id="se-modal-message-environment" style="color: red;"></div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<a href="#!" id="se-modal-close-environment" class="modal-close waves-effect waves-green btn-flat">閉じる</a>
+		</div>
+	</div>
+	
+	
+	<div id="modalview-environment-confirmation" class="modal">  <!-- idの値をボタンで設定したdata-targetの値と一致させる -->
+		<div id="se-preloader-environment-confirmation">
+			<div class="preloader-wrapper big active">
+				<div class="spinner-layer spinner-blue-only">
+					<div class="circle-clipper left">
+						<div class="circle"></div>
+					</div>
+					<div class="gap-patch">
+						<div class="circle"></div>
+					</div>
+					<div class="circle-clipper right">
+						<div class="circle"></div>
+					</div>
+				</div>
+			</div>
+			<p style="text-align: center">Wait a minute ...</p>
+		</div>
+		<div hidden id="se-modal-environment-confirmation">
+			<div id="se-modal-content-environment-confirmation" class="modal-content">
+				<h4>Confirmation</h4>
+				<p id="modal-header-environment-confirmation"></p><br/>
+				<div id="se-modal-message-environment-confirmation" style="color: red;"></div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<a href="#!" id="se-modal-close-environment-confirmation" class="modal-close waves-effect waves-green btn-flat">閉じる</a>
+		</div>
+	</div>
+	
+	
+	<div id="modalview-environment-delete" class="modal">  <!-- idの値をボタンで設定したdata-targetの値と一致させる -->
+		<div id="se-preloader-environment-delete">
+			<div class="preloader-wrapper big active">
+				<div class="spinner-layer spinner-blue-only">
+					<div class="circle-clipper left">
+						<div class="circle"></div>
+					</div>
+					<div class="gap-patch">
+						<div class="circle"></div>
+					</div>
+					<div class="circle-clipper right">
+						<div class="circle"></div>
+					</div>
+				</div>
+			</div>
+			<p style="text-align: center">Wait a minute ...</p>
+		</div>
+		<div hidden id="se-modal-environment-delete">
+			<div id="se-modal-content-environment-delete" class="modal-content">
+				<h4>Delete Progress</h4>
+				<p id="modal-header-environment-delete">クラウド環境削除の進捗です。</p><br/>
+				<div class="progress">
+					<div id="se-modal-progress-environment-delete" class="determinate" style="width: 0%"></div>
+				</div>
+				<div id="se-modal-message-environment-delete" style="color: red;"></div>
+			</div>
+		</div>
+		<div class="modal-footer">
+			<a href="#!" id="se-modal-close-environment-delete" class="modal-close waves-effect waves-green btn-flat">閉じる</a>
+		</div>
+	</div>
+	<div id="modalview-fortune" class="modal">  <!-- idの値をボタンで設定したdata-targetの値と一致させる -->
+		<div id="se-preloader">
+			<div class="preloader-wrapper big active">
+				<div class="spinner-layer spinner-blue-only">
+					<div class="circle-clipper left">
+						<div class="circle"></div>
+					</div>
+					<div class="gap-patch">
+						<div class="circle"></div>
+					</div>
+					<div class="circle-clipper right">
+						<div class="circle"></div>
+					</div>
+				</div>
+			</div>
+			<p style="text-align: center">Wait a minute ...</p>
+		</div>
+		<div hidden id="se-modal">
+			<div class="modal-content">
+				<h4>Fortune</h4>
+				<p>今日のあなたの運勢です。</p>
+				<div style="display:inline-flex; margin-left: 50px; margin-top: 30px;">
+					<img id="se-modal-fortune" src="" width="70px" />
+					<p id="se-modal-fortune-context" style="margin-left: 30px; width: 400px"></p>
+				</div>
+			</div>
+			<div class="modal-footer">
+				<a href="#!" class="modal-close waves-effect waves-green btn-flat">閉じる</a>
+			</div>
+		</div>
+	</div>
+	<div id="modalview-login" class="modal">
+		<div id="se-login-modal">
+			<div class="modal-content">
+				<h4>認証</h4>
+				<p>社員番号とパスワードを入力して下さい。</p>
+				<div class="input-field">
+					<input id="login_employee_number" type="text" class="validate se-input-login">
+					<label for="login_employee_number">社員番号</label>
+				</div>
+				<div class="input-field">
+					<input id="login_password" type="password" class="validate se-input-login">
+					<label for="login_password">パスワード</label>
+				</div>
+				<div style="display:inline-flex">
+					<button class="btn waves-effect waves-light grey darken-4" type="submit" name="action" onclick="postLogin()">認証<i class="material-icons right">send</i></button>
+					<p id="se-login-result" style="margin-left: 30px; margin-top: 6px; color:"></p>
+				</div>
+			</div>
+		</div>
+	</div>
+</body>
+</html>

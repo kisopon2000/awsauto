@@ -1,0 +1,21 @@
+{
+    "Name": "%s",
+    "Description": "",
+    "Role": "%s",
+    "ExecutionProperty": {
+        "MaxConcurrentRuns": 1
+    },
+    "Command": {
+        "Name": "glueetl",
+        "PythonVersion": "3",
+        "ScriptLocation": "%s"
+    },
+    "DefaultArguments": {
+        "--extra-py-files": "%s",
+        "--TempDir": "%s"
+    },
+    "MaxRetries": 0,
+    "GlueVersion": "2.0",
+    "NumberOfWorkers": 10,
+    "WorkerType": "G.1X"
+}

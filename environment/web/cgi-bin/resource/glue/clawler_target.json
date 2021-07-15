@@ -1,0 +1,11 @@
+{
+    "S3Targets": [
+        {
+            "Path": "s3://hoge-s3-datalake",
+            "Exclusions": []
+        }
+    ],
+    "JdbcTargets": [],
+    "DynamoDBTargets": [],
+    "CatalogTargets": []
+}

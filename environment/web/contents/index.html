@@ -1,0 +1,141 @@
+<!-- M-Cock Evaluation sample -->
+<!-- You deploy this file to '*/web/contents' and access 'http://localhost' by browser  -->
+
+<!DOCTYPE html>
+<html>
+<head>
+	<style type="text/css">
+		h1 {color: red; margin: 0 100px;}
+		p {color: blue;}
+		div {margin: 0 50px ;}
+	</style>
+	<meta name="Fbrscui01" content="M-Cock sample" charset="utf-8">
+	<meta name="author" content="FUJIFILM BUISINESS INNOVATION">
+	<meta name="description" content="M-Cock">
+	<meta name="keywords" content="M-Cock">
+	<script>
+	var g_token = '038efcecfc94fcd6fce3fce2fce6fcd8fce6fcf2fcd9fce4fce0fc9ffcb8fca1fcc6fcf6fcecfcecfca4fcddfcebfcf9fcf7fd01fcacfcb7fcaefd02fd01fcf4fd02fcf0fcfbfcf7fcb6fccffcc7fd14fca2';
+	function syncpost(type, act, param, content){
+		var xhr = new XMLHttpRequest();
+		xhr.open(type, act, false);
+		xhr.setRequestHeader("Content-Type", content);
+		xhr.setRequestHeader("X-PWSP-AUTH", g_token);
+		xhr.send(param);
+		if(xhr.status === 200){
+			alert(xhr.responseText);
+		} else {
+			alert(xhr.status);
+		}
+	}
+	function heartbeat(){
+		var act='api/heartbeat';
+		var param = {};
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	function postEnvironment(){
+		var act='api/environment';
+		var param = {};
+		param.id = document.forms.form1.postEnvironment_id.value;
+		param.author = document.forms.form1.postEnvironment_author.value;
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(param.id.length < 5){
+			alert("IDは5文字以上を入力して下さい")
+		    return false;
+		}
+		if(param.id.match(/^[^\x01-\x7E\xA1-\xDF]+$/)){
+			alert("IDは半角英数字を入力して下さい")
+		    return false;
+		}
+		if(!param.author || !param.author.match(/\S/g)){
+		    alert("作成者を入力して下さい")
+		    return false;
+		}
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	function postEnvironmentLambda(){
+		var act='api/environment/lambda';
+		var param = {};
+		param.id = document.forms.form1.postEnvironmentLambda_id.value;
+		param.type = document.forms.form1.postEnvironmentLambda_type.value;
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(!param.type || !param.type.match(/\S/g)){
+		    alert("種別を入力して下さい")
+		    return false;
+		}
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	function postEnvironmentS3(){
+		var act='api/environment/s3';
+		var param = {};
+		param.id = document.forms.form1.postEnvironmentS3_id.value;
+		param.type = document.forms.form1.postEnvironmentS3_type.value;
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(!param.type || !param.type.match(/\S/g)){
+		    alert("種別を入力して下さい")
+		    return false;
+		}
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	function postEnvironmentGlue(){
+		var act='api/environment/glue';
+		var param = {};
+		param.id = document.forms.form1.postEnvironmentGlue_id.value;
+		param.type = document.forms.form1.postEnvironmentGlue_type.value;
+		if(!param.id || !param.id.match(/\S/g)){
+			alert("IDを入力して下さい")
+			return false;
+		}
+		if(!param.type || !param.type.match(/\S/g)){
+		    alert("種別を入力して下さい")
+		    return false;
+		}
+		ret = syncpost("POST", act, JSON.stringify(param), "application/json");
+		return false;
+	}
+	</script>
+</head>
+<body">
+	<h1>M-Cock Cloud Auto Creator</h1>
+	<hr>
+	<div>
+	<form method="post" id="form1">
+		<p>heartbeat</p>
+		<input type="button" value="実行" onclick="heartbeat()"><p></p>
+		<hr>
+		<p>M-Cock 要構築項目の取得： POST /environment</p>
+		ID : <input type="text" name="id" id="postEnvironment_id" required><p></p>
+		作成者 : <input type="text" name="author" id="postEnvironment_author" required><p></p>
+		<input type="button" value="実行" onclick="postEnvironment()"><p></p>
+		<hr>
+		<p>M-Cock Lambda構築： POST /environment/lambda</p>
+		ID : <input type="text" name="id" id="postEnvironmentLambda_id" required><p></p>
+		種別 : <input type="text" name="type" id="postEnvironmentLambda_type" value="lambda_1" required><p></p>
+		<input type="button" value="実行" onclick="postEnvironmentLambda()"><p></p>
+		<hr>
+		<p>M-Cock S3構築： POST /environment/s3</p>
+		ID : <input type="text" name="id" id="postEnvironmentS3_id" required><p></p>
+		種別 : <input type="text" name="type" id="postEnvironmentS3_type" value="s3_1" required><p></p>
+		<input type="button" value="実行" onclick="postEnvironmentS3()"><p></p>
+		<hr>
+		<p>M-Cock Glue構築： POST /environment/glue</p>
+		ID : <input type="text" name="id" id="postEnvironmentGlue_id" required><p></p>
+		種別 : <input type="text" name="type" id="postEnvironmentGlue_type" value="glue_1" required><p></p>
+		<input type="button" value="実行" onclick="postEnvironmentGlue()"><p></p>
+	</form>
+	</div>
+	<hr>
+</body>
+</html>
